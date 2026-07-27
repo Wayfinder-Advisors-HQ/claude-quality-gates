@@ -1,0 +1,30 @@
+name: merge-not-overwrite
+
+# Enforceable additive-write check: enrich and merge, never overwrite.
+# Blocks a PR if the unit tests fail; advisory-scans the PR diff for destructive overwrites.
+
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Install pytest
+        run: pip install pytest
+      - name: Unit-test the merge-not-overwrite check (required)
+        run: pytest -q tests/test_merge_not_overwrite.py
+      - name: Scan PR diff for destructive overwrites (advisory)
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch origin "${{ github.base_ref }}" --depth=1 || true
+          python checks/merge_not_overwrite.py --diff "origin/${{ github.base_ref }}" \
+            || echo "::warning::merge-not-overwrite flagged a non-additive change (advisory — enrich and merge, never overwrite)"
