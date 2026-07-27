@@ -77,3 +77,25 @@ precise.
 ## License
 
 [MIT](LICENSE). Use them, fork them, adapt them.
+
+## Bonus check: additive writes (merge, never overwrite)
+
+Agents that maintain long-lived artifacts — profiles, registries, notes, logs — have a
+characteristic failure mode: a regeneration pass silently **overwrites** an enriched record
+with a smaller or empty one (a "stub regression"), and nothing notices because the new file
+looks fine on its own. The fix is a simple, machine-checkable rule: **enrich and merge, never
+overwrite.** Every write preserves prior content, adds or enriches, and only supersedes a
+specific field with a cited update — never blanket-replace, never regenerate-from-stub.
+
+This repo ships an enforceable version of that rule:
+
+- [`checks/merge_not_overwrite.py`](checks/merge_not_overwrite.py) — a pure-stdlib check that,
+  given an old and new version of a text artifact, flags blank/stub overwrites, dropped
+  frontmatter keys, and blanket replacements where a field-level update was possible. Runs as a
+  library or a CLI (`--staged` / `--diff BASE` against git).
+- [`tests/test_merge_not_overwrite.py`](tests/test_merge_not_overwrite.py) — unit tests for the
+  check, required in CI.
+- [`.github/workflows/merge-not-overwrite.yml`](.github/workflows/merge-not-overwrite.yml) — runs
+  the tests on every PR and advisory-scans the PR diff for destructive overwrites.
+
+Tune `shrink_tolerance` to your own appetite for how much a legitimate edit may shrink a file.
