@@ -1,0 +1,31 @@
+name: model-report-check
+
+# Enforceable model-state + verify-before-claim check (HARD RULES #90/#92/#93,
+# Wayfinder model-drift episode 2026-07-27). Blocks a PR if the unit tests fail.
+# Added additively alongside merge-not-overwrite; no existing workflow modified.
+
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Install pytest
+        run: pip install pytest
+      - name: Unit-test the model-report / verify-before-claim check (required)
+        run: pytest -q tests/test_model_report_check.py
+      - name: Demonstrate the check on the 2026-07-27 episode (advisory)
+        run: |
+          python checks/model_report_check.py \
+            --reported-model claude-opus-4-8 --required-model claude-opus-5 \
+            --claim-text "fable is cheap so route with it; it works" \
+            || echo "::warning::model-report-check flagged drift and/or unverified claims (expected on this demo input)"
